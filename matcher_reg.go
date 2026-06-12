@@ -1,8 +1,8 @@
 package matchs
 
-
 import (
 	"fmt"
+
 	"github.com/dlclark/regexp2"
 )
 
@@ -12,6 +12,10 @@ type regRule struct {
 	reg      *regexp2.Regexp
 }
 
+// NewRegRule compiles str into a regexp rule.
+//
+// str must not include REGEXP_PREFIX. The returned rule reports matches with
+// REGEXP_PREFIX added back to the rule tag.
 func NewRegRule(str string) (*regRule, error) {
 	if r, err := regexp2.Compile(str, 0); err == nil {
 		return &regRule{
@@ -24,57 +28,62 @@ func NewRegRule(str string) (*regRule, error) {
 	}
 }
 
+// MatchAll returns this regexp rule's tag when text matches.
+//
+// Only the first regexp match is considered. The map value is the matched
+// substring, but callers in this package use the rule tag as the reported word.
 func (r *regRule) MatchAll(text string) map[string]string {
 	var ret = make(map[string]string, 0)
 	match, _ := r.reg.FindStringMatch(text)
-	//-one reg find one
 	if match != nil {
 		ret[r.Tag] = match.String()
-		//ret = append(ret, match.String())
-		//match, _ = r.reg.FindNextMatch(match) //del
 	}
-	//-one reg find more
-	//for {
-	//	if match == nil {
-	//		break
-	//	}
-	//  ret[r.Tag] = match.String()
-	//	//ret = append(ret, match.String())
-	//	match, _ = r.reg.FindNextMatch(match)
-	//	if match == nil {
-	//		break
-	//	}
-	//}
 	return ret
 }
 
-type RegexpMather struct {
+// RegexpMatcher matches rules built from REGEXP_PREFIX-prefixed patterns.
+//
+// Build expects patterns without REGEXP_PREFIX because MatchService strips the
+// prefix before dispatching to this matcher. Invalid patterns are ignored. This
+// matcher reports matched regexp rule tags but does not perform text
+// replacement.
+type RegexpMatcher struct {
 	matchers []*regRule
 }
 
-func NewRegexpMatcher() *RegexpMather {
-	return &RegexpMather{
-	}
+// RegexpMather is the old name for RegexpMatcher.
+//
+// Deprecated: use RegexpMatcher.
+type RegexpMather = RegexpMatcher
+
+// NewRegexpMatcher creates an empty RegexpMatcher.
+func NewRegexpMatcher() *RegexpMatcher {
+	return &RegexpMatcher{}
 }
 
-func (a *RegexpMather) Build(words []string) {
+// Build compiles regexp patterns into matcher rules.
+//
+// Invalid regexp patterns are skipped to preserve the existing API, which does
+// not return build errors.
+func (a *RegexpMatcher) Build(words []string) {
 	for _, w := range words {
 		if m, err := NewRegRule(w); err == nil {
 			a.matchers = append(a.matchers, m)
 		}
 	}
-	return
 }
 
-//Match
-func (a *RegexpMather) Match(text string, onlyOne bool, repl rune) (word []string, desensitization string) {
-	//desensitization = text
+// Match returns regexp rule tags matched by text.
+//
+// onlyOne stops after the first regexp rule with any match. repl is accepted to
+// satisfy Matcher but is not used because RegexpMatcher does not perform text
+// replacement. The replacement text return value is not a desensitized result.
+func (a *RegexpMatcher) Match(text string, onlyOne bool, repl rune) (word []string, desensitization string) {
 	for _, r := range a.matchers {
 		ret := r.MatchAll(text)
-		for tag, _ := range ret {
+		for tag := range ret {
 			word = append(word, tag)
 		}
-		//所有的正则只有命中一个就返回
 		if onlyOne && len(ret) > 0 {
 			return
 		}

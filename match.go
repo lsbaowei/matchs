@@ -3,25 +3,37 @@ package matchs
 import "strings"
 
 const (
-	DFA      = 0
+	// DFA identifies the plain keyword matcher.
+	DFA = 0
+	// ASSEMBLE identifies the composite rule matcher.
 	ASSEMBLE = 1
-	REGEXP   = 2
+	// REGEXP identifies the regexp matcher.
+	REGEXP = 2
 
+	// REGEXP_PREFIX marks a rule as a regexp rule.
 	REGEXP_PREFIX = "reg@"
 )
 
+// MatchService groups all supported matcher implementations behind one API.
+//
+// Build dispatches rules to plain keyword, composite-rule, or regexp matchers.
+// Match aggregates the results from the built matchers.
 type MatchService struct {
 	matchers map[int]Matcher
 }
 
-//初始化
+// NewMatchService creates an empty MatchService.
 func NewMatchService() *MatchService {
 	return &MatchService{
 		matchers: make(map[int]Matcher),
 	}
 }
 
-//Build 当前支持三种配置，可以新增
+// Build classifies words into matcher-specific rule sets and builds matchers.
+//
+// Rules with REGEXP_PREFIX are handled as regexp rules. Rules containing "|" or
+// "#" are handled as composite rules. All other rules are handled as plain
+// keywords.
 func (m *MatchService) Build(words []string) {
 	var (
 		dfaList      []string
@@ -40,13 +52,13 @@ func (m *MatchService) Build(words []string) {
 	}
 
 	if len(dfaList) > 0 {
-		matcher := NewDFAMather()
+		matcher := NewDFAMatcher()
 		matcher.Build(dfaList)
 		m.matchers[DFA] = matcher
 	}
 
 	if len(assembleList) > 0 {
-		matcher := NewAssembleMather()
+		matcher := NewAssembleMatcher()
 		matcher.Build(assembleList)
 		m.matchers[ASSEMBLE] = matcher
 	}
@@ -58,7 +70,11 @@ func (m *MatchService) Build(words []string) {
 	}
 }
 
-//Match
+// Match scans text with all built matchers.
+//
+// onlyOne asks each matcher to stop after its first match when supported. repl
+// is passed to matchers that support replacement. It returns matched rule names
+// and the replacement text reported by the matchers.
 func (m *MatchService) Match(text string, onlyOne bool, repl rune) (sensitiveWords []string, replaceText string) {
 	for _, x := range m.matchers {
 		ret, _ := x.Match(text, onlyOne, repl)
@@ -72,7 +88,6 @@ func (m *MatchService) Match(text string, onlyOne bool, repl rune) (sensitiveWor
 	}
 	return
 }
-
 
 /*-------------other util-------------------*/
 

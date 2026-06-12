@@ -1,0 +1,11 @@
+.idea
+.vscode
+debug
+vendor/
+.DS_Store
+cmd/*/config/*
+*.pdf
+*v1.txt
+*.pprof
+README_TASK.md
+openspec/

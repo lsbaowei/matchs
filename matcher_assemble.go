@@ -1,22 +1,20 @@
 package matchs
 
-
 import "strings"
 
 const (
-	NON = iota
-	AND
+	ruleTypeExclude = iota
+	ruleTypeOrdered
 )
 
 type rule struct {
-	metaData string //原始数据
+	rawRule  string
 	words    []string
-	optType  int
+	ruleType int
 }
 
-//match ####
 func (r *rule) match(text string) bool {
-	if r.optType == AND {
+	if r.ruleType == ruleTypeOrdered {
 		index := -1
 		//A|B|C 有大概的顺序关系，在包含多个ABC的情况下，可能不准
 		for _, w := range r.words {
@@ -29,7 +27,7 @@ func (r *rule) match(text string) bool {
 			}
 		}
 		return true
-	} else if r.optType == NON {
+	} else if r.ruleType == ruleTypeExclude {
 		if strings.Contains(text, r.words[0]) {
 			for i := 1; i < len(r.words); i++ {
 				if strings.Contains(text, r.words[i]) {
@@ -43,40 +41,66 @@ func (r *rule) match(text string) bool {
 	return false
 }
 
-type AssembleMather struct {
+// AssembleMatcher matches composite rules.
+//
+// Rules containing "|" require words to appear in an ordered relationship.
+// Rules containing "#" require the first word to appear and later words to be
+// absent. This matcher reports matched rule strings but does not perform text
+// replacement.
+type AssembleMatcher struct {
 	rules []*rule
 }
 
-func NewAssembleMather() *AssembleMather {
-	return &AssembleMather{}
+// AssembleMather is the old name for AssembleMatcher.
+//
+// Deprecated: use AssembleMatcher.
+type AssembleMather = AssembleMatcher
+
+// NewAssembleMatcher creates an empty AssembleMatcher.
+func NewAssembleMatcher() *AssembleMatcher {
+	return &AssembleMatcher{}
 }
 
-func (a *AssembleMather) Build(words []string) {
+// NewAssembleMather creates an empty AssembleMatcher.
+//
+// Deprecated: use NewAssembleMatcher.
+func NewAssembleMather() *AssembleMatcher {
+	return NewAssembleMatcher()
+}
+
+// Build adds composite rules to the matcher.
+//
+// Rules containing "|" are treated as ordered rules. Rules containing "#" are
+// treated as exclusion rules. Other rules are ignored by this matcher.
+func (a *AssembleMatcher) Build(words []string) {
 
 	for _, w := range words {
 
 		if strings.Contains(w, "|") {
 			a.rules = append(a.rules, &rule{
-				metaData: w,
+				rawRule:  w,
 				words:    strings.Split(w, "|"),
-				optType:  AND,
+				ruleType: ruleTypeOrdered,
 			})
 		} else if strings.Contains(w, "#") {
 			a.rules = append(a.rules, &rule{
-				metaData: w,
+				rawRule:  w,
 				words:    strings.Split(w, "#"),
-				optType:  NON,
+				ruleType: ruleTypeExclude,
 			})
 		}
 	}
 }
 
-// Match onlyOne控制是否只处理一次 //不支持脱敏处理；
-func (a *AssembleMather) Match(text string, onlyOne bool, repl rune) (word []string, desensitization string) {
-	//desensitization = text
+// Match returns composite rules matched by text.
+//
+// onlyOne stops after the first matched composite rule. repl is accepted to
+// satisfy Matcher but is not used because AssembleMatcher does not perform text
+// replacement. The replacement text return value is not a desensitized result.
+func (a *AssembleMatcher) Match(text string, onlyOne bool, repl rune) (word []string, desensitization string) {
 	for _, rule := range a.rules {
 		if rule.match(text) {
-			word = append(word, rule.metaData)
+			word = append(word, rule.rawRule)
 			if onlyOne {
 				return
 			}

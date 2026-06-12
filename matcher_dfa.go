@@ -49,12 +49,11 @@ func (d *DFAMatcher) Match(text string, onlyOne bool, repl rune) (sensitiveWords
 	}
 
 	textChars := []rune(text)
-	//textCharsCopy := make([]rune, len(textChars))
-	//copy(textCharsCopy, textChars)
+	textCharsCopy := make([]rune, len(textChars))
+	copy(textCharsCopy, textChars)
 
 	length := len(textChars)
 	for i := 0; i < length; i++ {
-		//root本身是没有key的，root的下面一个节点，才算是第一个；
 		temp := d.root.FindChild(textChars[i])
 		if temp == nil {
 			continue
@@ -63,17 +62,25 @@ func (d *DFAMatcher) Match(text string, onlyOne bool, repl rune) (sensitiveWords
 		for ; j < length && temp != nil; j++ {
 			if temp.End {
 				sensitiveWords = append(sensitiveWords, string(textChars[i:j]))
-				//replaceRune(textCharsCopy, repl, i, j)
+				replaceRune(textCharsCopy, repl, i, j)
+				if onlyOne {
+					replaceText = string(textCharsCopy)
+					return
+				}
 			}
 			temp = temp.FindChild(textChars[j])
 		}
 
 		if j == length && temp != nil && temp.End {
 			sensitiveWords = append(sensitiveWords, string(textChars[i:length]))
-			//replaceRune(textCharsCopy, repl, i, length)
+			replaceRune(textCharsCopy, repl, i, length)
+			if onlyOne {
+				replaceText = string(textCharsCopy)
+				return
+			}
 		}
 	}
-	//replaceText = string(textCharsCopy)
+	replaceText = string(textCharsCopy)
 	return
 }
 
@@ -92,6 +99,10 @@ type DFANode struct {
 
 // AddWord adds word into the subtree rooted at n.
 func (n *DFANode) AddWord(word string) {
+	if word == "" {
+		return
+	}
+
 	node := n
 	chars := []rune(word)
 	for index := range chars {

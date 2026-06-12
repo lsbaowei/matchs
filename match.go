@@ -14,6 +14,8 @@ const (
 	REGEXP_PREFIX = "reg@"
 )
 
+var matcherOrder = []int{DFA, ASSEMBLE, REGEXP}
+
 // MatchService groups all supported matcher implementations behind one API.
 //
 // Build dispatches rules to plain keyword, composite-rule, or regexp matchers.
@@ -76,12 +78,18 @@ func (m *MatchService) Build(words []string) {
 // is passed to matchers that support replacement. It returns matched rule names
 // and the replacement text reported by the matchers.
 func (m *MatchService) Match(text string, onlyOne bool, repl rune) (sensitiveWords []string, replaceText string) {
-	for _, x := range m.matchers {
-		ret, _ := x.Match(text, onlyOne, repl)
+	replaceText = text
+	for _, matcherType := range matcherOrder {
+		x, ok := m.matchers[matcherType]
+		if !ok {
+			continue
+		}
+
+		ret, replaced := x.Match(replaceText, onlyOne, repl)
+		replaceText = replaced
 		for _, word := range ret {
 			sensitiveWords = append(sensitiveWords, word)
 		}
-		//限制次数
 		if onlyOne && len(ret) > 0 {
 			return
 		}

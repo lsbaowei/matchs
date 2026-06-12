@@ -15,16 +15,13 @@ type rule struct {
 
 func (r *rule) match(text string) bool {
 	if r.ruleType == ruleTypeOrdered {
-		index := -1
-		//A|B|C 有大概的顺序关系，在包含多个ABC的情况下，可能不准
+		index := 0
 		for _, w := range r.words {
-			last := strings.Index(text, w)
-			if last > 0 && last > index {
-				index = last
-				continue
-			} else {
+			last := strings.Index(text[index:], w)
+			if last < 0 {
 				return false
 			}
+			index += last + len(w)
 		}
 		return true
 	} else if r.ruleType == ruleTypeExclude {
@@ -96,8 +93,9 @@ func (a *AssembleMatcher) Build(words []string) {
 //
 // onlyOne stops after the first matched composite rule. repl is accepted to
 // satisfy Matcher but is not used because AssembleMatcher does not perform text
-// replacement. The replacement text return value is not a desensitized result.
+// replacement. The replacement text return value keeps the original text.
 func (a *AssembleMatcher) Match(text string, onlyOne bool, repl rune) (word []string, desensitization string) {
+	desensitization = text
 	for _, rule := range a.rules {
 		if rule.match(text) {
 			word = append(word, rule.rawRule)

@@ -77,8 +77,9 @@ func (a *RegexpMatcher) Build(words []string) {
 //
 // onlyOne stops after the first regexp rule with any match. repl is accepted to
 // satisfy Matcher but is not used because RegexpMatcher does not perform text
-// replacement. The replacement text return value is not a desensitized result.
+// replacement. The replacement text return value keeps the original text.
 func (a *RegexpMatcher) Match(text string, onlyOne bool, repl rune) (word []string, desensitization string) {
+	desensitization = text
 	for _, r := range a.matchers {
 		ret := r.MatchAll(text)
 		for tag := range ret {
